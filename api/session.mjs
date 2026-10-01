@@ -2,7 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { assistantInstructions } from '../lib/assistant-instructions.mjs';
 
 const MAX_SDP_BYTES = 128_000;
-const ALLOWED_MODELS = new Set(['gpt-realtime-2.1', 'gpt-realtime-2.1-mini']);
+const ALLOWED_MODELS = new Set(['gpt-realtime-2.1', 'gpt-live-1']);
 
 function json(response, status, payload) {
   response.status(status).setHeader('Cache-Control', 'no-store');
@@ -74,28 +74,45 @@ export default async function handler(request, response) {
       chunks.push(chunk);
     }
     const sdp = Buffer.concat(chunks).toString('utf8');
-    const form = new FormData();
-    form.set('sdp', sdp);
-    form.set('session', JSON.stringify({
-      type: 'realtime',
-      model: requestedModel,
-      instructions: assistantInstructions,
-      output_modalities: ['audio'],
-      audio: {
-        input: {
-          turn_detection: { type: 'server_vad', create_response: true, interrupt_response: true },
-          transcription: { model: 'gpt-4o-mini-transcribe' }
-        },
-        output: { voice: 'marin' }
-      }
-    }));
-
-    const upstream = await fetch('https://api.openai.com/v1/realtime/calls', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
-      body: form,
-      signal: AbortSignal.timeout(45_000)
-    });
+    const isLive = requestedModel === 'gpt-live-1';
+    const upstream = isLive
+      ? await fetch('https://api.openai.com/v1/live/sessions', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session: {
+              model: 'gpt-live-1',
+              instructions: assistantInstructions,
+              delegation: { type: 'client' },
+              audio: { output: { voice: 'marin' } }
+            },
+            transport: { type: 'webrtc', sdp }
+          }),
+          signal: AbortSignal.timeout(45_000)
+        })
+      : await (() => {
+          const form = new FormData();
+          form.set('sdp', sdp);
+          form.set('session', JSON.stringify({
+            type: 'realtime',
+            model: 'gpt-realtime-2.1',
+            instructions: assistantInstructions,
+            output_modalities: ['audio'],
+            audio: {
+              input: {
+                turn_detection: { type: 'server_vad', create_response: true, interrupt_response: true },
+                transcription: { model: 'gpt-4o-mini-transcribe' }
+              },
+              output: { voice: 'marin' }
+            }
+          }));
+          return fetch('https://api.openai.com/v1/realtime/calls', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
+            body: form,
+            signal: AbortSignal.timeout(45_000)
+          });
+        })();
     const answer = await upstream.text();
     if (!upstream.ok) {
       let message = 'Το OpenAI API δεν δημιούργησε συνεδρία.';
@@ -104,6 +121,10 @@ export default async function handler(request, response) {
     }
     response.setHeader('Cache-Control', 'no-store');
     response.setHeader('X-Content-Type-Options', 'nosniff');
+    if (isLive) {
+      response.setHeader('Content-Type', 'application/json; charset=utf-8');
+      return response.status(201).send(answer);
+    }
     response.setHeader('Content-Type', 'application/sdp; charset=utf-8');
     return response.status(200).send(answer);
   } catch (error) {
