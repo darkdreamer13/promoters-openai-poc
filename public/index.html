@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#ffffff"><meta name="description" content="Εσωτερική δοκιμή φωνητικού βοηθού Promoters με OpenAI Realtime."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Play:wght@700&display=swap" rel="stylesheet"><title>Promoters · Voice PoC</title>
+  <style>
+    :root{--ink:#231f20;--muted:#4b4b4b;--line:#e7e5e9;--paper:#ffffff;--pink:#e03c8a;--purple:#7b327f;--deep:#4a3f8c;--green:#1e806d;--red:#b9404b;--shadow:0 14px 40px #211d220c}
+    *{box-sizing:border-box}body{margin:0;background:#fff;color:var(--ink);font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+    .page{max-width:1180px;margin:0 auto;padding:32px 24px 52px}.top{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:0 0 26px;border-bottom:1px solid var(--line)}.logo{width:156px;height:auto;flex:none}.eyebrow{font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--purple);font-weight:750}.top-note{font-size:13px;color:var(--muted)}h1{font:700 clamp(30px,4vw,42px)/1.12 Play,Inter,sans-serif;letter-spacing:-.025em;margin:30px 0 10px;color:var(--ink)}h2,h3,.eyebrow{font-family:Play,Inter,sans-serif}.intro{max-width:760px;color:var(--muted);margin:0 0 24px}.notice{padding:12px 15px;border-left:3px solid var(--pink);background:white;color:#514c51;border-radius:0 10px 10px 0;font-size:13px;margin-bottom:20px}
+    .grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,.9fr);gap:18px;align-items:start}.card{background:white;border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);overflow:hidden}.card-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:center}.card-head h2{font-size:16px;margin:0}.status{font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center}.dot{width:8px;height:8px;border-radius:50%;background:#a7a4a2}.status.on .dot{background:var(--green);box-shadow:0 0 0 4px #1e806d18}.status.err .dot{background:var(--red)}.voice-body{padding:20px}.access-label{display:block;font-size:13px;font-weight:600;margin:0 0 6px}.voice-body input{width:min(100%,360px);padding:11px 12px;border:1px solid var(--line);border-radius:8px;font:14px Inter,sans-serif}.control-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.btn{border:0;border-radius:8px;padding:11px 16px;background:linear-gradient(135deg,#6256a5,#4a3f8c);color:white;font:700 14px Play,Inter,sans-serif;cursor:pointer;transition:transform .25s ease,filter .25s ease}.btn:hover{filter:brightness(1.08);transform:translateY(-2px)}.btn:focus-visible,input:focus-visible{outline:3px solid var(--pink);outline-offset:3px}.btn:disabled{opacity:.45;cursor:not-allowed}.btn.secondary{background:#fff;color:var(--deep);border:1px solid var(--line);font-family:Inter,sans-serif;font-weight:600}.btn.stop{background:#fff1f2;color:#9c2d3a;border:1px solid #f4d5d8}.scenario{min-height:145px;margin:18px 0;background:linear-gradient(135deg,#fdf8fb,#f8f7fc);border:1px solid #eee7ef;border-radius:12px;padding:15px}.scenario h3{font-size:14px;margin:0 0 6px}.scenario p{font-size:13px;color:var(--muted);margin:0}.scenario ul{padding-left:19px;color:#57515a;font-size:13px;margin:9px 0 0}.transcript{height:300px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:14px;background:#fff;white-space:pre-wrap}.empty{color:#8d888d;font-size:14px}.line{margin:0 0 12px}.line:last-child{margin:0}.speaker{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--purple);font-weight:750;margin-bottom:3px}.line.user .speaker{color:#6f7779}.line p{margin:0}.hint{color:var(--muted);font-size:12px;margin:11px 0 0}
+    .metric-grid{padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{border:1px solid var(--line);border-radius:11px;padding:13px}.metric .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}.metric .value{font-size:20px;font-weight:730;margin-top:4px;font-variant-numeric:tabular-nums}.metric .sub{font-size:11px;color:var(--muted);margin-top:3px}.cost-note{padding:0 16px 14px;color:var(--muted);font-size:12px}.rates{border-top:1px solid var(--line);padding:15px 16px}.rates h3{font-size:13px;margin:0 0 9px}.rates table{width:100%;border-collapse:collapse;font-size:12px}.rates td{padding:5px 0;border-bottom:1px solid #f1efed}.rates td:last-child{text-align:right;font-variant-numeric:tabular-nums}.export{padding:14px 16px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap}.eventbox{max-height:180px;overflow:auto;border-top:1px solid var(--line);padding:13px 16px;font:11px/1.5 ui-monospace,monospace;color:#605a5f;white-space:pre-wrap}.footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-top:20px;color:var(--muted);font-size:12px}.foot-links a{color:var(--purple)}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}@media(max-width:800px){.page{padding:20px 14px 36px}.grid{grid-template-columns:1fr}.top{align-items:flex-start}.top-note{text-align:right}.logo{width:130px}.transcript{height:260px}}
+  </style>
+</head>
+<body><main class="page">
+  <header class="top"><img class="logo" src="/promoters-logo.svg" alt="Promoters Digital Agency"><div class="top-note">Εσωτερική δοκιμή φωνής<br>OpenAI Realtime · WebRTC · χωρίς τηλεφωνία</div></header>
+  <div class="eyebrow" style="margin-top:27px">Promoters · Voice PoC</div><h1>Δοκιμή ψηφιακού βοηθού</h1><p class="intro">Μίλησε με τον ψηφιακό βοηθό της Promoters στα ελληνικά. Δες τη ροή της συνομιλίας, τα usage στοιχεία και μια εκτίμηση κόστους από τα tokens του session.</p>
+  <div class="notice"><strong>Πριν ξεκινήσεις:</strong> αυτό είναι εσωτερικό PoC μέσω browser, χωρίς τηλεφωνικό αριθμό, SIP/PBX, ημερολόγιο ή CRM. Η ζωντανή ροή ήχου πηγαίνει στο OpenAI Realtime για να δημιουργηθεί η απάντηση. Δεν αποθηκεύεται ηχογράφηση ή transcript στον server· η συνομιλία μένει στη μνήμη της καρτέλας και εξάγεται μόνο αν το επιλέξεις. Χρησιμοποίησε φανταστικά στοιχεία.</div>
+  <div class="grid">
+    <section class="card"><div class="card-head"><h2>Συνομιλία</h2><div class="status" id="status"><span class="dot"></span><span id="statusText">Έλεγχος ρύθμισης…</span></div></div>
+      <div class="voice-body"><label for="accessCode" class="access-label">Ιδιωτικός κωδικός δοκιμής</label><input id="accessCode" type="password" autocomplete="off" placeholder="Όρισε POC_ACCESS_CODE στο Vercel" aria-describedby="accessHelp"><p class="hint" id="accessHelp">Ο κωδικός ορίζεται από εσένα στα environment variables του Vercel και δεν αποθηκεύεται στη σελίδα.</p><div class="control-row" style="margin-top:14px"><button class="btn" id="startBtn">Έναρξη συνομιλίας</button><button class="btn stop" id="stopBtn" disabled>Τερματισμός</button><button class="btn secondary" id="clearBtn">Νέα δοκιμή</button></div>
+      <div class="scenario"><h3>Τι ελέγχουμε σε αυτή τη δοκιμή</h3><p>Φυσικότητα φωνής στα ελληνικά, σωστή παρουσίαση ως ψηφιακός βοηθός, κατανόηση αιτήματος και τήρηση των ορίων γνώσης.</p><ul><li>Ο βοηθός δεν κλείνει πραγματικό ραντεβού και δεν καλεί άνθρωπο.</li><li>Τα modes άμεσης απάντησης, αναπάντητης κλήσης και off δεν δοκιμάζονται χωρίς SIP/PBX.</li><li>Η απομαγνητοφώνηση της δικής σου φωνής είναι ενεργή και χρεώνεται χωριστά με gpt-4o-mini-transcribe· η χρέωση εμφανίζεται στις μετρήσεις.</li></ul></div>
+      <div class="transcript" id="transcript" aria-live="polite"><div class="empty">Η συνομιλία θα εμφανιστεί εδώ. Πάτησε «Έναρξη συνομιλίας» και επίτρεψε πρόσβαση στο μικρόφωνο.</div></div><p class="hint">Το κόστος υπολογίζεται από τα usage events του μοντέλου· μην κλείσεις την καρτέλα πριν ολοκληρωθεί η απάντηση και ενημερωθεί η μέτρηση.</p></div>
+    </section>
+    <aside class="card"><div class="card-head"><h2>Μετρήσεις συνεδρίας</h2><span class="status" id="usageStatus">Δεν υπάρχει session</span></div>
+      <div class="metric-grid">
+        <div class="metric"><div class="label">Διάρκεια</div><div class="value" id="duration">00:00</div><div class="sub">χρόνος σύνδεσης</div></div>
+        <div class="metric"><div class="label">Σύνολο API εκτίμησης</div><div class="value" id="cost">€0,0000</div><div class="sub">Realtime + απομαγνητοφώνηση</div></div>
+        <div class="metric"><div class="label">Tokens εισόδου</div><div class="value" id="inTokens">0</div><div class="sub" id="inBreakdown">ήχος 0 · κείμενο 0</div></div>
+        <div class="metric"><div class="label">Tokens εξόδου</div><div class="value" id="outTokens">0</div><div class="sub" id="outBreakdown">ήχος 0 · κείμενο 0</div></div>
+        <div class="metric"><div class="label">Κόστος απομαγνητοφώνησης</div><div class="value" id="transcribeCost">€0,0000</div><div class="sub" id="transcribeTokens">ήχος 0 · κείμενο 0</div></div>
+      </div>
+      <div class="cost-note">Υπολογισμός ανά response, με αφαίρεση των cached input tokens, συν τη χωριστή χρήση απομαγνητοφώνησης, και μετατροπή σε ευρώ με ισοτιμία €1 = $1,1378 (28/09/2026). Η τελική χρέωση επιβεβαιώνεται στο OpenAI Usage dashboard.</div>
+      <div class="rates"><h3>Τιμές API</h3><table><tbody><tr><td>Realtime audio input / cached</td><td>$32 / $0,40 · 1M tokens</td></tr><tr><td>Realtime audio output</td><td>$64 / 1M tokens</td></tr><tr><td>Realtime text input / cached</td><td>$4 / $0,40 · 1M tokens</td></tr><tr><td>Realtime text output</td><td>$24 / 1M tokens</td></tr><tr><td>Transcribe audio input</td><td>$1,25 / 1M tokens</td></tr><tr><td>Transcribe text output</td><td>$5 / 1M tokens</td></tr></tbody></table></div>
+      <div class="export"><button class="btn secondary" id="jsonBtn" disabled>Εξαγωγή JSON</button><button class="btn secondary" id="csvBtn" disabled>Εξαγωγή usage CSV</button></div><div class="eventbox" id="events">Τα response usage events θα εμφανιστούν εδώ.</div>
+    </aside>
+  </div>
+  <footer class="footer"><span>PoC · Δεν είναι παραγωγική τηλεφωνική υπηρεσία.</span><span class="foot-links"><a href="https://developers.openai.com/api/docs/guides/voice-latency-cost" target="_blank" rel="noreferrer">OpenAI usage guide</a> · <a href="https://developers.openai.com/api/docs/models/gpt-realtime-2.1" target="_blank" rel="noreferrer">Τιμές μοντέλου</a></span></footer>
+</main>
+<script>
+(() => {
+  const USD_EUR = 1 / 1.13;
+  const rates = {audioIn:32, audioCached:0.40, audioOut:64, textIn:4, textCached:0.40, textOut:24, transcribeIn:1.25, transcribeOut:5};
+  const state = {events:[], lines:[], responses:[], transcriptions:[], seen:new Set(), seenTranscriptions:new Set(), startedAt:null, endedAt:null, durationSeconds:0, sessionId:null};
+  let pc=null, dc=null, mic=null, timer=null, sessionLimit=null;
+  const $ = (id) => document.getElementById(id);
+  const formatInt = n => (Number(n)||0).toLocaleString('el-GR');
+  const formatEUR = n => '€'+(Number(n)||0).toLocaleString('el-GR',{minimumFractionDigits:4,maximumFractionDigits:4});
+  function setStatus(text, kind='') { $('statusText').textContent=text; $('status').className='status '+kind; }
+  function renderDuration() { const sec=state.startedAt?Math.max(state.durationSeconds,Math.floor(((state.endedAt||Date.now())-state.startedAt)/1000)):0; $('duration').textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0'); }
+  function usageCost(u) {
+    const i=u?.input_token_details||{}, c=i.cached_tokens_details||{}, o=u?.output_token_details||{};
+    const audioIn=Math.max(0,(i.audio_tokens||0)-(c.audio_tokens||0)), audioCached=c.audio_tokens||0;
+    const textIn=Math.max(0,(i.text_tokens||0)-(c.text_tokens||0)), textCached=c.text_tokens||0;
+    const audioOut=o.audio_tokens||0, textOut=o.text_tokens||0;
+    const usd=(audioIn*rates.audioIn+audioCached*rates.audioCached+textIn*rates.textIn+textCached*rates.textCached+audioOut*rates.audioOut+textOut*rates.textOut)/1_000_000;
+    return {audioIn,audioCached,textIn,textCached,audioOut,textOut,inputTokens:u?.input_tokens||0,outputTokens:u?.output_tokens||0,usd,eur:usd*USD_EUR};
+  }
+  function transcriptionCost(u) {
+    const audioTokens=u?.input_token_details?.audio_tokens||u?.input_tokens||0;
+    const textTokens=u?.output_tokens||0;
+    const usd=(audioTokens*rates.transcribeIn+textTokens*rates.transcribeOut)/1_000_000;
+    return {audioTokens,textTokens,usd,eur:usd*USD_EUR};
+  }
+  function updateMetrics() {
+    let it=0,ot=0,ai=0,ti=0,ao=0,to=0,cost=0,transcribeCostTotal=0,transcribeAudio=0,transcribeText=0;
+    for(const r of state.responses){it+=r.usage.inputTokens;ot+=r.usage.outputTokens;ai+=r.usage.audioIn+r.usage.audioCached;ti+=r.usage.textIn+r.usage.textCached;ao+=r.usage.audioOut;to+=r.usage.textOut;cost+=r.usage.eur;}
+    for(const t of state.transcriptions){transcribeCostTotal+=t.usage.eur;transcribeAudio+=t.usage.audioTokens;transcribeText+=t.usage.textTokens;}
+    $('inTokens').textContent=formatInt(it); $('outTokens').textContent=formatInt(ot); $('cost').textContent=formatEUR(cost+transcribeCostTotal);$('transcribeCost').textContent=formatEUR(transcribeCostTotal);$('transcribeTokens').textContent=`ήχος ${formatInt(transcribeAudio)} · κείμενο ${formatInt(transcribeText)}`;
+    $('inBreakdown').textContent=`ήχος ${formatInt(ai)} · κείμενο ${formatInt(ti)}`; $('outBreakdown').textContent=`ήχος ${formatInt(ao)} · κείμενο ${formatInt(to)}`;
+    $('usageStatus').textContent=state.responses.length?`${state.responses.length} responses με usage`:'Αναμονή usage';
+    $('jsonBtn').disabled=!state.responses.length&&!state.lines.length; $('csvBtn').disabled=!state.responses.length&&!state.transcriptions.length;
+    renderDuration();
+  }
+  function addLine(who,text) {
+    if(!text?.trim()) return;
+    const last=state.lines[state.lines.length-1];
+    if(last&&last.who===who&&last.live){last.text+=text;}
+    else state.lines.push({who,text,at:new Date().toISOString(),live:true});
+    const box=$('transcript');box.innerHTML='';
+    for(const line of state.lines){const el=document.createElement('div');el.className='line '+(line.who==='Εσύ'?'user':'assistant');const label=document.createElement('div');label.className='speaker';label.textContent=line.who;const p=document.createElement('p');p.textContent=line.text;el.append(label,p);box.append(el);}
+    box.scrollTop=box.scrollHeight;
+  }
+  function eventInfo(e) {
+    if(!e||typeof e.type!=='string')return;
+    state.events.push({at:new Date().toISOString(),type:e.type,id:e.event_id||null});
+    if(state.events.length>300)state.events.shift();
+    if(e.type==='response.output_audio_transcript.delta'||e.type==='response.output_text.delta')addLine('Βοηθός',e.delta||'');
+    if(e.type==='conversation.item.input_audio_transcription.completed'&&e.transcript){addLine('Εσύ',e.transcript);const id=e.item_id||e.event_id;if(e.usage&&id&&!state.seenTranscriptions.has(id)){state.seenTranscriptions.add(id);const usage=transcriptionCost(e.usage);state.transcriptions.push({id,at:new Date().toISOString(),model:'gpt-4o-mini-transcribe',transcript:e.transcript,usage,rawUsage:e.usage});const ev=document.createElement('div');ev.textContent=`Transcribe ${id} · ${formatInt(usage.audioTokens)} audio / ${formatInt(usage.textTokens)} text · ${formatEUR(usage.eur)}`;$('events').prepend(ev);updateMetrics();}}
+    if(e.type==='response.done'){
+      const response=e.response||{}, usage=response.usage;
+      for(const l of state.lines)l.live=false;
+      if(usage&&response.id&&!state.seen.has(response.id)){
+        state.seen.add(response.id);state.responses.push({id:response.id,at:new Date().toISOString(),model:response.model||'gpt-realtime-2.1',usage:usageCost(usage),rawUsage:usage});
+        const ev=document.createElement('div');ev.textContent=`${response.id} · ${formatInt(usage.input_tokens)} in / ${formatInt(usage.output_tokens)} out · ${formatEUR(usageCost(usage).eur)}`;$('events').prepend(ev);
+      }
+      updateMetrics();
+    }
+    if(e.type==='error')setStatus('Σφάλμα API','err');
+  }
+  function cleanup() {
+    clearInterval(timer); timer=null; clearTimeout(sessionLimit); sessionLimit=null;
+    if(dc){try{dc.close()}catch{} dc=null;}
+    if(pc){try{pc.close()}catch{} pc=null;}
+    if(mic){for(const t of mic.getTracks())t.stop();mic=null;}
+    $('startBtn').disabled=false; $('stopBtn').disabled=true;
+    if(state.startedAt&&!state.endedAt)state.endedAt=Date.now();
+    renderDuration();
+  }
+  async function start() {
+    if(pc)return;
+    if(!$('accessCode').value.trim()){setStatus('Βάλε τον κωδικό δοκιμής','err');return;}
+    $('startBtn').disabled=true;setStatus('Σύνδεση…');
+    try {
+      mic=await navigator.mediaDevices.getUserMedia({audio:true});
+      pc=new RTCPeerConnection();
+      const audio=document.createElement('audio');audio.autoplay=true;audio.playsInline=true;pc.ontrack=e=>{audio.srcObject=e.streams[0];audio.play().catch(()=>{});};
+      mic.getTracks().forEach(t=>pc.addTrack(t,mic));
+      dc=pc.createDataChannel('oai-events');
+      dc.onmessage=e=>{try{eventInfo(JSON.parse(e.data));}catch{}};
+      dc.onopen=()=>{setStatus('Σε συνομιλία','on');$('stopBtn').disabled=false;state.startedAt=Date.now();state.endedAt=null;timer=setInterval(renderDuration,1000);sessionLimit=setTimeout(()=>{addLine('Σύστημα','Η δοκιμή σταμάτησε αυτόματα μετά από πέντε λεπτά.');stop();},300000);dc.send(JSON.stringify({type:'response.create'}));};
+      pc.onconnectionstatechange=()=>{if(pc&&['failed','disconnected'].includes(pc.connectionState)){setStatus('Η σύνδεση διακόπηκε','err');cleanup();}};
+      const offer=await pc.createOffer();await pc.setLocalDescription(offer);
+      await new Promise((resolve,reject)=>{if(pc.iceGatheringState==='complete')resolve();else{const timeout=setTimeout(()=>reject(new Error('Timeout gathering ICE')),12000);pc.addEventListener('icegatheringstatechange',()=>{if(pc?.iceGatheringState==='complete'){clearTimeout(timeout);resolve();}});}});
+      const response=await fetch('/api/session',{method:'POST',headers:{'Content-Type':'application/sdp','X-PoC-Access-Code':$('accessCode').value.trim()},body:pc.localDescription.sdp});
+      const answer=await response.text();if(!response.ok)throw new Error(JSON.parse(answer).error||'Αποτυχία σύνδεσης');
+      await pc.setRemoteDescription({type:'answer',sdp:answer});$('stopBtn').disabled=false;
+    } catch(error) { cleanup();setStatus('Δεν συνδέθηκε','err');addLine('Σύστημα',error.message||'Δεν έγινε σύνδεση.'); }
+  }
+  function stop(){ if(dc?.readyState==='open'){try{dc.send(JSON.stringify({type:'response.cancel'}));}catch{}} cleanup();setStatus('Η συνομιλία ολοκληρώθηκε'); }
+  function reset(){ if(pc)stop();state.events=[];state.lines=[];state.responses=[];state.transcriptions=[];state.seen.clear();state.seenTranscriptions.clear();state.startedAt=null;state.endedAt=null;state.durationSeconds=0;state.sessionId=null;$('transcript').innerHTML='<div class="empty">Η συνομιλία θα εμφανιστεί εδώ. Πάτησε «Έναρξη συνομιλίας» και επίτρεψε πρόσβαση στο μικρόφωνο.</div>'; $('events').textContent='Τα response usage events θα εμφανιστούν εδώ.';setStatus('Έλεγχος ρύθμισης…');updateMetrics(); }
+  function exportData(){const realtime=state.responses.reduce((a,r)=>a+r.usage.eur,0),transcription=state.transcriptions.reduce((a,t)=>a+t.usage.eur,0),total=realtime+transcription;return {app:'Promoters Realtime PoC',models:{conversation:'gpt-realtime-2.1',transcription:'gpt-4o-mini-transcribe'},startedAt:state.startedAt?new Date(state.startedAt).toISOString():null,endedAt:state.endedAt?new Date(state.endedAt).toISOString():new Date().toISOString(),durationSeconds:state.startedAt?Math.max(state.durationSeconds,Math.floor(((state.endedAt||Date.now())-state.startedAt)/1000)):0,transcript:state.lines.map(({who,text,at})=>({who,text,at})),responses:state.responses,transcriptions:state.transcriptions,costEstimate:{eur:total,usd:total/USD_EUR,byService:{realtimeEur:realtime,transcriptionEur:transcription},fx:'1 EUR ≈ 1.13 USD (indicative)',excluded:['SIP/telephony','taxes','other infrastructure']},events:state.events,recordingStored:false};}
+  function download(name,type,data){const blob=new Blob([data],{type});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+  $('startBtn').onclick=start;$('stopBtn').onclick=stop;$('clearBtn').onclick=reset;
+  $('jsonBtn').onclick=()=>download('promoters-realtime-session.json','application/json',JSON.stringify(exportData(),null,2));
+  $('csvBtn').onclick=()=>{const cols=['service','response_or_item_id','at','model','audio_input_uncached','audio_input_cached','text_input_uncached','text_input_cached','audio_output','text_output','input_tokens_total','output_tokens_total','cost_usd','cost_eur'];const rows=[cols.join(',')];for(const r of state.responses){const u=r.usage;rows.push(['realtime',r.id,r.at,r.model,u.audioIn,u.audioCached,u.textIn,u.textCached,u.audioOut,u.textOut,u.inputTokens,u.outputTokens,u.usd.toFixed(8),u.eur.toFixed(8)].map(v=>'"'+String(v).replaceAll('"','""')+'"').join(','));}for(const t of state.transcriptions){const u=t.usage;rows.push(['transcription',t.id,t.at,t.model,u.audioTokens,0,0,0,0,u.textTokens,u.audioTokens,u.textTokens,u.usd.toFixed(8),u.eur.toFixed(8)].map(v=>'"'+String(v).replaceAll('"','""')+'"').join(','));}download('promoters-realtime-usage.csv','text/csv;charset=utf-8',rows.join('\n'));};
+  fetch('/api/health').then(r=>r.json()).then(d=>{if(d.apiKeyConfigured&&d.accessCodeConfigured){setStatus('Έτοιμο για δοκιμή','');$('startBtn').disabled=false;}else{setStatus('Εκκρεμεί ρύθμιση Vercel','err');$('startBtn').disabled=true;addLine('Σύστημα','Για να ενεργοποιηθεί η συνομιλία, πρόσθεσε τα OPENAI_API_KEY και POC_ACCESS_CODE στα Environment Variables του Vercel και κάνε redeploy.');}}).catch(()=>{setStatus('Ο server δεν απαντά','err');$('startBtn').disabled=true;});
+  updateMetrics();
+})();
+</script></body></html>

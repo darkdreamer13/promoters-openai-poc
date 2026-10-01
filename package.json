@@ -1,0 +1,8 @@
+{
+  "name": "promoters-openai-realtime-poc",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {"node": ">=20"},
+  "scripts": {"build": "node scripts/build.mjs", "start": "node --env-file=.env.local server.mjs"}
+}
