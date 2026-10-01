@@ -157,7 +157,8 @@
       pc.onconnectionstatechange=()=>{if(pc&&['failed','disconnected'].includes(pc.connectionState)){setStatus('Η σύνδεση διακόπηκε','err');cleanup();}};
       const offer=await pc.createOffer();await pc.setLocalDescription(offer);
       await new Promise((resolve,reject)=>{if(pc.iceGatheringState==='complete')resolve();else{const timeout=setTimeout(()=>reject(new Error('Timeout gathering ICE')),12000);pc.addEventListener('icegatheringstatechange',()=>{if(pc?.iceGatheringState==='complete'){clearTimeout(timeout);resolve();}});}});
-      const response=await fetch('/api/session',{method:'POST',headers:{'Content-Type':'application/sdp','X-PoC-Access-Code':$('accessCode').value.trim(),'X-PoC-Model':state.sessionModel},body:pc.localDescription.sdp});
+      const sessionEndpoint=state.sessionModel==='gpt-live-1'?'/api/live-session':'/api/session';
+      const response=await fetch(sessionEndpoint,{method:'POST',headers:{'Content-Type':'application/sdp','X-PoC-Access-Code':$('accessCode').value.trim(),'X-PoC-Model':state.sessionModel},body:pc.localDescription.sdp});
       if(!response.ok){const errorText=await response.text();let message=errorText;try{message=JSON.parse(errorText).error||message;}catch{}throw new Error(message||'Αποτυχία σύνδεσης');}
       if(state.sessionModel==='gpt-live-1'){
         const session=await response.json();state.sessionId=session.session?.id||null;
