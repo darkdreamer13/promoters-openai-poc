@@ -18,11 +18,28 @@ function sameSecret(candidate, expected) {
   const a=Buffer.from(candidate),b=Buffer.from(expected);
   return a.length===b.length&&timingSafeEqual(a,b);
 }
+function isAllowedOrigin(originValue, requestHost) {
+  let origin;
+  try { origin = new URL(originValue || ''); } catch { return false; }
+  if (process.env.NODE_ENV === 'production') {
+    const allowedHosts = new Set([
+      'promoters-openai-poc.vercel.app',
+      process.env.VERCEL_URL,
+      process.env.VERCEL_PROJECT_PRODUCTION_URL,
+      process.env.VERCEL_BRANCH_URL
+    ].filter(Boolean).map(value => value.replace(/^https?:\/\//i, '').split('/')[0].toLowerCase()));
+    return origin.protocol === 'https:' && origin.port === '' && allowedHosts.has(origin.hostname.toLowerCase());
+  }
+  const originHost = origin.hostname.toLowerCase();
+  const requestHostname = String(requestHost || '').split(':')[0].toLowerCase();
+  return originHost === requestHostname ||
+    (['localhost', '127.0.0.1'].includes(originHost) && ['localhost', '127.0.0.1'].includes(requestHostname));
+}
 const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url||'/',`http://${host}:${port}`);
   if(req.method==='GET'&&url.pathname==='/api/health')return send(res,200,{ok:true,model:'gpt-realtime-2.1',apiKeyConfigured:Boolean(process.env.OPENAI_API_KEY),accessCodeConfigured:Boolean(process.env.POC_ACCESS_CODE)});
   if(req.method==='POST'&&url.pathname==='/api/session'){
-    if(req.headers.origin!==`http://${host}:${port}`&&req.headers.origin!==`http://localhost:${port}`)return send(res,403,{error:'Το αίτημα πρέπει να ξεκινήσει από τη σελίδα της δοκιμής.'});
+    if(!isAllowedOrigin(req.headers.origin,req.headers.host))return send(res,403,{error:'Το αίτημα πρέπει να ξεκινήσει από τη σελίδα της δοκιμής.'});
     if(!sameSecret(req.headers['x-poc-access-code'],process.env.POC_ACCESS_CODE))return send(res,401,{error:'Ο κωδικός δοκιμής δεν είναι σωστός.'});
     if(!process.env.OPENAI_API_KEY)return send(res,503,{error:'Το OPENAI_API_KEY δεν έχει ρυθμιστεί.'});
     if(!String(req.headers['content-type']||'').toLowerCase().startsWith('application/sdp'))return send(res,415,{error:'Αναμενόταν SDP προσφορά WebRTC.'});
