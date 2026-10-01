@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { assistantInstructions } from '../lib/assistant-instructions.mjs';
 
 const MAX_SDP_BYTES = 128_000;
+const ALLOWED_MODELS = new Set(['gpt-realtime-2.1', 'gpt-realtime-2.1-mini']);
 
 function json(response, status, payload) {
   response.status(status).setHeader('Cache-Control', 'no-store');
@@ -59,6 +60,10 @@ export default async function handler(request, response) {
   if (!String(request.headers['content-type'] || '').toLowerCase().startsWith('application/sdp')) {
     return json(response, 415, { error: 'Αναμενόταν SDP προσφορά WebRTC.' });
   }
+  const requestedModel = String(request.headers['x-poc-model'] || 'gpt-realtime-2.1');
+  if (!ALLOWED_MODELS.has(requestedModel)) {
+    return json(response, 400, { error: 'Το μοντέλο που επιλέχθηκε δεν υποστηρίζεται από αυτό το test harness.' });
+  }
 
   try {
     const chunks = [];
@@ -73,7 +78,7 @@ export default async function handler(request, response) {
     form.set('sdp', sdp);
     form.set('session', JSON.stringify({
       type: 'realtime',
-      model: 'gpt-realtime-2.1',
+      model: requestedModel,
       instructions: assistantInstructions,
       output_modalities: ['audio'],
       audio: {
