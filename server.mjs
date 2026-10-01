@@ -54,6 +54,28 @@ const server=http.createServer(async(req,res)=>{
       return send(res,200,answer,'application/sdp; charset=utf-8');
     }catch(error){return send(res,502,{error:error.name==='TimeoutError'?'Έληξε το χρονικό όριο σύνδεσης.':'Αποτυχία δημιουργίας συνεδρίας. Έλεγξε τη σύνδεση και ξαναδοκίμασε.'});}
   }
+  if(req.method==='POST'&&url.pathname==='/api/live-session'){
+    if(!isAllowedOrigin(req.headers.origin,req.headers.host))return send(res,403,{error:'Το αίτημα πρέπει να ξεκινήσει από τη σελίδα της δοκιμής.'});
+    if(!sameSecret(req.headers['x-poc-access-code'],process.env.POC_ACCESS_CODE))return send(res,401,{error:'Ο κωδικός δοκιμής δεν είναι σωστός.'});
+    if(!process.env.OPENAI_API_KEY)return send(res,503,{error:'Το OPENAI_API_KEY δεν έχει ρυθμιστεί.'});
+    if(!String(req.headers['content-type']||'').toLowerCase().startsWith('application/sdp'))return send(res,415,{error:'Αναμενόταν SDP προσφορά WebRTC.'});
+    try{
+      const chunks=[];let size=0;
+      for await(const chunk of req){size+=chunk.length;if(size>maxSdpBytes)return send(res,413,{error:'Το αίτημα είναι μεγαλύτερο από το επιτρεπόμενο όριο.'});chunks.push(chunk);}
+      const sdp=Buffer.concat(chunks).toString('utf8');
+      const upstream=await fetch('https://api.openai.com/v1/live/sessions',{
+        method:'POST',
+        headers:{Authorization:`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},
+        body:JSON.stringify({session:{model:'gpt-live-1',instructions:assistantInstructions,delegation:{type:'client'},audio:{output:{voice:'marin'}}},transport:{type:'webrtc',sdp}}),
+        signal:AbortSignal.timeout(45_000)
+      });
+      const body=await upstream.text();
+      if(!upstream.ok){let message='Το OpenAI GPT-Live API δεν δημιούργησε συνεδρία.';try{message=JSON.parse(body).error?.message||message}catch{}return send(res,upstream.status,{error:message});}
+      let session;try{session=JSON.parse(body)}catch{return send(res,502,{error:'Το GPT-Live επέστρεψε μη αναμενόμενη απάντηση.'});}
+      if(!session?.session?.id||!session?.transport?.sdp)return send(res,502,{error:'Η απάντηση του GPT-Live δεν περιείχε τα στοιχεία σύνδεσης WebRTC.'});
+      return send(res,201,session);
+    }catch(error){return send(res,502,{error:error.name==='TimeoutError'?'Έληξε το χρονικό όριο σύνδεσης GPT-Live.':'Αποτυχία δημιουργίας συνεδρίας GPT-Live. Έλεγξε τη σύνδεση και ξαναδοκίμασε.'});}
+  }
   if(req.method==='GET'){
     const requested=url.pathname==='/'?'index.html':decodeURIComponent(url.pathname.slice(1));
     const safePath=normalize(requested).replace(/^([/\\]|\.\.(?:[/\\]|$))+/, '');
