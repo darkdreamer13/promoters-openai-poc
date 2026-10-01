@@ -16,6 +16,29 @@ function sameSecret(candidate, expected) {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
+function isAllowedOrigin(request) {
+  let origin;
+  try {
+    origin = new URL(request.headers.origin || '');
+  } catch {
+    return false;
+  }
+
+  const productionHosts = new Set([
+    'promoters-openai-poc.vercel.app',
+    process.env.VERCEL_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    process.env.VERCEL_BRANCH_URL
+  ].filter(Boolean).map(value => value.replace(/^https?:\/\//i, '').split('/')[0].toLowerCase()));
+
+  if (process.env.NODE_ENV === 'production') {
+    return origin.protocol === 'https:' && productionHosts.has(origin.hostname.toLowerCase());
+  }
+
+  const requestHost = String(request.headers.host || '').split(':')[0].toLowerCase();
+  return origin.hostname.toLowerCase() === requestHost;
+}
+
 export const config = { api: { bodyParser: false } };
 
 export default async function handler(request, response) {
@@ -24,10 +47,7 @@ export default async function handler(request, response) {
     return json(response, 405, { error: 'Επιτρέπεται μόνο POST.' });
   }
 
-  const expectedHost = request.headers['x-forwarded-host'] || request.headers.host;
-  let originHost = '';
-  try { originHost = new URL(request.headers.origin || '').host; } catch {}
-  if (!originHost || originHost !== expectedHost) {
+  if (!isAllowedOrigin(request)) {
     return json(response, 403, { error: 'Το αίτημα πρέπει να ξεκινήσει από τη σελίδα της δοκιμής.' });
   }
   if (!sameSecret(request.headers['x-poc-access-code'], process.env.POC_ACCESS_CODE)) {
