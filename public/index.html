@@ -45,10 +45,59 @@
   const transcriptionRates = {audioIn:1.25,textOut:5};
   const state = {events:[], lines:[], responses:[], transcriptions:[], seen:new Set(), seenTranscriptions:new Set(), startedAt:null, endedAt:null, durationSeconds:0, sessionId:null, sessionModel:null, liveUsageSeconds:0, liveFinalUsage:null, mockHandoff:null};
   let pc=null, dc=null, mic=null, timer=null, sessionLimit=null, finishTimeout=null, intakeTimer=null;
+  let bargeInContext=null, bargeInFrame=null, bargeInMuted=false, assistantSpeechUntil=0;
   const $ = (id) => document.getElementById(id);
   const formatInt = n => (Number(n)||0).toLocaleString('el-GR');
   const formatEUR = n => '€'+(Number(n)||0).toLocaleString('el-GR',{minimumFractionDigits:4,maximumFractionDigits:4});
   function setStatus(text, kind='') { $('statusText').textContent=text; $('status').className='status '+kind; }
+  function rmsLevel(analyser, buffer) {
+    if (!analyser) return 0;
+    analyser.getFloatTimeDomainData(buffer);
+    let sum=0; for(const value of buffer) sum+=value*value;
+    return Math.sqrt(sum/buffer.length);
+  }
+  function startBargeInMonitor(micStream, remoteStream) {
+    const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+    if(!AudioContextClass||!micStream||!remoteStream) return;
+    try {
+      bargeInContext=bargeInContext||new AudioContextClass();
+      if(bargeInContext.state==='suspended')bargeInContext.resume().catch(()=>{});
+      const micAnalyser=bargeInContext.createAnalyser(); micAnalyser.fftSize=512;
+      const remoteAnalyser=bargeInContext.createAnalyser(); remoteAnalyser.fftSize=512;
+      bargeInContext.createMediaStreamSource(micStream).connect(micAnalyser);
+      bargeInContext.createMediaStreamSource(remoteStream).connect(remoteAnalyser);
+      const micBuffer=new Float32Array(micAnalyser.fftSize), remoteBuffer=new Float32Array(remoteAnalyser.fftSize);
+      let callerFrames=0, callerSilentSince=0, interruptionSent=false;
+      const monitor=()=>{
+        if(!pc||!bargeInContext) return;
+        const now=Date.now(), micLevel=rmsLevel(micAnalyser,micBuffer), remoteLevel=rmsLevel(remoteAnalyser,remoteBuffer);
+        callerFrames=micLevel>0.022?callerFrames+1:0;
+        const callerTalking=callerFrames>=3;
+        const assistantTalking=remoteLevel>0.006||now<assistantSpeechUntil;
+        if(callerTalking) callerSilentSince=0;
+        else if(bargeInMuted&&!callerSilentSince) callerSilentSince=now;
+        if(callerTalking&&assistantTalking&&!bargeInMuted){
+          bargeInMuted=true;
+          for(const track of remoteStream.getAudioTracks()) track.enabled=false;
+          state.events.push({at:new Date().toISOString(),type:'local.barge_in.detected'});
+          if(state.sessionModel==='gpt-live-1'&&dc?.readyState==='open'&&!interruptionSent){
+            interruptionSent=true;
+            dc.send(JSON.stringify({type:'session.instructions.append',event_id:'poc-barge-in-'+Date.now(),delegation_id:null,content:'Σταμάτα τώρα την απάντηση που λες και άκου τον καλούντα. Μην συνεχίσεις την προηγούμενη πρόταση. Απάντησε μόνο αφού ολοκληρώσει αυτό που λέει.'}));
+          }
+        }
+        if(bargeInMuted&&callerSilentSince&&now-callerSilentSince>550){
+          for(const track of remoteStream.getAudioTracks()) track.enabled=true;
+          bargeInMuted=false; interruptionSent=false; callerSilentSince=0;
+        }
+        bargeInFrame=requestAnimationFrame(monitor);
+      };
+      bargeInFrame=requestAnimationFrame(monitor);
+    } catch(error) { state.events.push({at:new Date().toISOString(),type:'local.barge_in.unavailable',reason:error?.name||'AudioContextError'}); }
+  }
+  function stopBargeInMonitor() {
+    if(bargeInFrame) cancelAnimationFrame(bargeInFrame); bargeInFrame=null; bargeInMuted=false; assistantSpeechUntil=0;
+    if(bargeInContext){const context=bargeInContext;bargeInContext=null;context.close().catch(()=>{});}
+  }
   function renderDuration() { const sec=state.startedAt?Math.max(state.durationSeconds,Math.floor(((state.endedAt||Date.now())-state.startedAt)/1000)):0; $('duration').textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0'); }
   function renderModelRates() {
     const live=$('modelSelect').value==='gpt-live-1';
@@ -123,11 +172,11 @@
     if(e.type==='session.started'){
       state.sessionId=e.session?.id||state.sessionId;setStatus('Σε συνομιλία · GPT-Live','on');$('stopBtn').disabled=false;
       state.startedAt=Date.now();state.endedAt=null;timer=setInterval(renderDuration,1000);sessionLimit=setTimeout(()=>{addLine('Σύστημα','Η δοκιμή σταμάτησε αυτόματα μετά από πέντε λεπτά.');stop();},300000);
-      dc?.send(JSON.stringify({type:'session.instructions.append',event_id:`poc-greeting-${Date.now()}`,delegation_id:null,content:'Ξεκίνα με τον φυσικό χαιρετισμό της Promoters και συνέχισε στη γλώσσα του καλούντος. Απάντα άμεσα και σύντομα, με φυσικό τρόπο· μην επαναλαμβάνεις το ίδιο κείμενο και μην λες «μισό λεπτό να σκεφτώ». Αν ακουστεί παράπονο ή αίτημα ανθρώπου, αναγνώρισε το συγκεκριμένο θέμα, μην προσφέρεις λύσεις, ζήτησε τα στοιχεία που χρειάζονται ένα κάθε φορά και ετοίμασε προσχέδιο επανεπικοινωνίας. Η καταγραφή είναι μόνο προσομοίωση και δεν αποστέλλεται.'}));
+      dc?.send(JSON.stringify({type:'session.instructions.append',event_id:`poc-greeting-${Date.now()}`,delegation_id:null,content:'Ξεκίνα αμέσως με τον εγκεκριμένο χαιρετισμό της Promoters. Συνέχισε στη γλώσσα και στον τόνο του καλούντος. Μίλα σύντομα, φυσικά, με μία ερώτηση κάθε φορά. Άκου παράπονο, αναγνώρισέ το με μία φράση και μην προσφέρεις λύση· ζήτησε μόνο το επόμενο αναγκαίο στοιχείο. Μην επαναλαμβάνεις όσα ήδη είπε, μην επιμένεις σε προαιρετικά στοιχεία και μην ισχυριστείς ότι στάλθηκε ή καταχωρίστηκε μήνυμα.'}));
     }
     if(e.type==='session.usage.updated'&&Number.isFinite(e.usage?.seconds)){state.liveUsageSeconds=e.usage.seconds;updateMetrics();}
     if(e.type==='session.input_transcript.delta'){addLine('Εσύ',e.delta||'');clearTimeout(intakeTimer);intakeTimer=setTimeout(updateMockHandoff,1200);}
-    if(e.type==='session.output_transcript.delta')addLine('Βοηθός',e.delta||'');
+    if(e.type==='session.output_transcript.delta'){assistantSpeechUntil=Date.now()+1400;addLine('Βοηθός',e.delta||'');}
     if(e.type==='session.closed'){
       state.liveFinalUsage=e.usage||null;
       if(Number.isFinite(e.usage?.seconds))state.liveUsageSeconds=e.usage.seconds;
@@ -162,7 +211,7 @@
     if(e.type==='error')setStatus('Σφάλμα API','err');
   }
   function cleanup() {
-    clearInterval(timer); timer=null; clearTimeout(sessionLimit); sessionLimit=null;clearTimeout(finishTimeout);finishTimeout=null;clearTimeout(intakeTimer);intakeTimer=null;
+    stopBargeInMonitor(); clearInterval(timer); timer=null; clearTimeout(sessionLimit); sessionLimit=null;clearTimeout(finishTimeout);finishTimeout=null;clearTimeout(intakeTimer);intakeTimer=null;
     if(dc){try{dc.close()}catch{} dc=null;}
     if(pc){try{pc.close()}catch{} pc=null;}
     if(mic){for(const t of mic.getTracks())t.stop();mic=null;}
@@ -176,9 +225,11 @@
     if(!$('accessCode').value.trim()){setStatus('Βάλε τον κωδικό δοκιμής','err');return;}
     $('startBtn').disabled=true;$('modelSelect').disabled=true;state.sessionModel=$('modelSelect').value;setStatus('Σύνδεση…');
     try {
-      mic=await navigator.mediaDevices.getUserMedia({audio:true});
+      const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+      if(AudioContextClass){bargeInContext=new AudioContextClass();if(bargeInContext.state==='suspended')await bargeInContext.resume();}
+      mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
       pc=new RTCPeerConnection();
-      const audio=document.createElement('audio');audio.autoplay=true;audio.playsInline=true;pc.ontrack=e=>{audio.srcObject=e.streams[0];audio.play().catch(()=>{});};
+      const audio=document.createElement('audio');audio.autoplay=true;audio.playsInline=true;pc.ontrack=e=>{audio.srcObject=e.streams[0];audio.play().catch(()=>{});startBargeInMonitor(mic,e.streams[0]);};
       mic.getTracks().forEach(t=>pc.addTrack(t,mic));
       dc=pc.createDataChannel('oai-events');
       dc.onmessage=e=>{try{eventInfo(JSON.parse(e.data));}catch{}};
