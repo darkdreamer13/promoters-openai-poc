@@ -104,7 +104,7 @@
     if(e.type==='session.started'){
       state.sessionId=e.session?.id||state.sessionId;setStatus('Σε συνομιλία · GPT-Live','on');$('stopBtn').disabled=false;
       state.startedAt=Date.now();state.endedAt=null;timer=setInterval(renderDuration,1000);sessionLimit=setTimeout(()=>{addLine('Σύστημα','Η δοκιμή σταμάτησε αυτόματα μετά από πέντε λεπτά.');stop();},300000);
-      dc?.send(JSON.stringify({type:'session.instructions.append',event_id:`poc-greeting-${Date.now()}`,delegation_id:null,content:'Ξεκίνα τώρα με έναν σύντομο χαιρετισμό. Συστήσου ως δοκιμαστικός ψηφιακός βοηθός της Promoters και ρώτησε πώς μπορείς να βοηθήσεις.'}));
+      dc?.send(JSON.stringify({type:'session.instructions.append',event_id:`poc-greeting-${Date.now()}`,delegation_id:null,content:'Ξεκίνα τη συνομιλία με τον φυσικό χαιρετισμό: «Καλημέρα σας, καλέσατε την Promoters. Είμαι ο ψηφιακός βοηθός της εταιρείας. Πώς μπορώ να σας βοηθήσω;». Μην αναφέρεις ότι πρόκειται για δοκιμή. Αν ο συνομιλητής μιλήσει αγγλικά, χαιρέτησε και συνέχισε στα αγγλικά.'}));
     }
     if(e.type==='session.usage.updated'&&Number.isFinite(e.usage?.seconds)){state.liveUsageSeconds=e.usage.seconds;updateMetrics();}
     if(e.type==='session.input_transcript.delta')addLine('Εσύ',e.delta||'');
