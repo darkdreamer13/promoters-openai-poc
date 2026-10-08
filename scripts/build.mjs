@@ -10,4 +10,7 @@ const liveSession = await readFile(new URL('../api/live-session.mjs', import.met
 if (!liveSession.includes('https://api.openai.com/v1/live/sessions') || !liveSession.includes("model: 'gpt-live-1'")) throw new Error('Δεν βρέθηκε το ξεχωριστό GPT-Live session endpoint.');
 const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
 if (config.outputDirectory !== 'public') throw new Error('Μη αναμενόμενος φάκελος εξόδου Vercel.');
-console.log(`Build checks passed: ${required.length} required files, Greek UI, Realtime/GPT-Live selector and session routes, Vercel output directory.`);
+const instructions = await readFile(new URL('../lib/assistant-instructions.mjs', import.meta.url), 'utf8');
+if (!html.includes('id="handoff"') || !html.includes('session.delegation.created') || !html.includes('ownerNotified:false')) throw new Error('Δεν βρέθηκε η τοπική, προσομοιωμένη καταγραφή αιτήματος.');
+if (!instructions.includes('ΠΑΡΑΠΟΝΑ ΚΑΙ ΑΙΤΗΜΑΤΑ ΕΠΑΝΕΠΙΚΟΙΝΩΝΙΑΣ') || !instructions.includes('μην προσφέρεις αυθαίρετες λύσεις') || !instructions.includes('φυσικά, άμεσα')) throw new Error('Δεν βρέθηκαν οι εγκεκριμένες οδηγίες φυσικής συνομιλίας και παραπόνων.');
+console.log(`Build checks passed: ${required.length} required files, Greek UI, GPT-Live flow, simulated owner handoff, quality instructions and Vercel output directory.`);
