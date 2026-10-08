@@ -6,6 +6,7 @@ for (const file of required) await access(new URL(`../${file}`, import.meta.url)
 const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
 if (!html.includes('<html lang="el">') || !html.includes('gpt-realtime-2.1') || !html.includes('POC_ACCESS_CODE')) throw new Error('Η σελίδα δεν περιλαμβάνει τα αναμενόμενα στοιχεία της δοκιμής.');
 if (!html.includes('id="modelSelect"') || !html.includes('gpt-live-1') || !html.includes('liveVoiceUsage')) throw new Error('Δεν βρέθηκε η επιλογή και η μέτρηση GPT-Live.');
+if (!html.includes('value="gpt-live-1" selected')) throw new Error('Το GPT-Live-1 πρέπει να είναι προεπιλεγμένο για την επόμενη δοκιμή.');
 const liveSession = await readFile(new URL('../api/live-session.mjs', import.meta.url), 'utf8');
 if (!liveSession.includes('https://api.openai.com/v1/live/sessions') || !liveSession.includes("model: 'gpt-live-1'")) throw new Error('Δεν βρέθηκε το ξεχωριστό GPT-Live session endpoint.');
 const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
